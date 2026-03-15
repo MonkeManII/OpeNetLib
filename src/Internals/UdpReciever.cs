@@ -47,7 +47,7 @@ namespace OpeNetLib.Internals
         /// <returns>
         /// A <see cref="Task{}>"/> that completes when a packet is recieved.
         /// </returns>
-        public async Task<OriginPacket> ReceiveFirstAsync(int? msTimeout = null)
+        public async Task<PacketCallbackParam> ReceiveFirstAsync(int? msTimeout = null)
         {
             UdpReceiveResult result;
 
@@ -56,19 +56,19 @@ namespace OpeNetLib.Internals
                 tokenSrc.CancelAfter((int)msTimeout);
             result = await _udpClient.ReceiveAsync(tokenSrc.Token);
 
-            return new OriginPacket(result.RemoteEndPoint, result.Buffer);
+            return new PacketCallbackParam(result.RemoteEndPoint, result.Buffer, null, null);
         }
 
         /// <summary>
-        ///     Recieves the first <see cref="OriginPacket"/> queued for recieving.
+        ///     Recieves the first <see cref="PacketCallbackParam"/> queued for recieving.
         ///     <para>
         ///         If no packet is available, do not wait, and return null.
         ///     </para>
         /// </summary>
-        /// <returns>The first <see cref="OriginPacket"/> in reception, or null if none.</returns>
-        public OriginPacket? RecieveFirst()
+        /// <returns>The first <see cref="PacketCallbackParam"/> in reception, or null if none.</returns>
+        public PacketCallbackParam? RecieveFirst()
         {
-            OriginPacket? result = null;
+            PacketCallbackParam? result = null;
 
             if (_udpClient.Available > 0)
             {
@@ -77,7 +77,7 @@ namespace OpeNetLib.Internals
 
                 if (_outEP is not null)
                 {
-                    result = new(_outEP, bytes);
+                    result = new(_outEP, bytes, null, null);
                 }
             }
 

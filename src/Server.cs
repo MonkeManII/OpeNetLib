@@ -47,7 +47,7 @@ namespace OpeNetLib
             }
         }
 
-        internal async void ConnectionCallback(OriginPacket packet)
+        internal async void ConnectionCallback(PacketCallbackParam packet)
         {
             int clientReceptionPort = BitConverter.ToInt32(packet.Data, 1);
             

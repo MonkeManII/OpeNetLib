@@ -2,5 +2,5 @@
 
 namespace OpeNetLib
 {
-    public delegate void PacketRecievedCallback(OriginPacket packet);
+    public delegate void PacketRecievedCallback(PacketCallbackParam packet);
 }

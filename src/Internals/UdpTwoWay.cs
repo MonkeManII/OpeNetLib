@@ -46,11 +46,11 @@ namespace OpeNetLib.Internals
             _reciever = new();
         }
 
-        public int ListenForPackets()
+        public int ListenForPackets(Client? client, Server? server)
         {
             int packets = 0;
 
-            OriginPacket? recievedPacket;
+            PacketCallbackParam? recievedPacket;
 
             do
             {
@@ -58,7 +58,10 @@ namespace OpeNetLib.Internals
 
                 if (recievedPacket is not null)
                 {
-                    OnPacketRecieved((OriginPacket)recievedPacket);
+                    recievedPacket.Server ??= server;
+                    recievedPacket.Client ??= client;
+
+                    OnPacketRecieved(recievedPacket);
                     ++packets;
                 }
             }

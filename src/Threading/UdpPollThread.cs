@@ -31,7 +31,10 @@ namespace OpeNetLib.Threading
         /// <param name="id">The <see cref="Thread"/> ID, for debugging purposes.</param>
         public UdpPollThread(string? id = null)
         {
-            _thread = new(Listen);
+            _thread = new(Listen)
+            {
+                IsBackground = false
+            };
             _param = new();
 
             if (id is not null)

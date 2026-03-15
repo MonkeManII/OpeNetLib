@@ -5,12 +5,34 @@ using System.Net;
 
 namespace OpeNetLib
 {
+    /// <summary>
+    /// Represents a UDP client that can connect to one server.
+    /// </summary>
     public sealed class Client : IDisposable
     {
+        /// <summary>
+        /// The polling thread for packet polling.
+        /// </summary>
         readonly UdpPollThread PollingThread;
+
+        /// <summary>
+        /// The two-way connection for interacting with the server.
+        /// </summary>
         readonly UdpTwoWay ServerInteractor;
+
+        /// <summary>
+        /// The callback to call when a packet is recieved.
+        /// </summary>
         readonly PacketRecievedCallback Callback;
+
+        /// <summary>
+        /// The <see cref="IPEndPoint"/> of the server that this is connected to.
+        /// </summary>
         public IPEndPoint? ServerEndPoint { get; private set; }
+
+        /// <summary>
+        /// Whether the client-server handshake has finished, and communications are complete.
+        /// </summary>
         bool portConfirmed = false;
 
         public async void Dispose()
@@ -18,6 +40,10 @@ namespace OpeNetLib
             ServerInteractor.Dispose();
         }
 
+        /// <summary>
+        /// Creates a new <see cref="Client"/> with the specified callback.
+        /// </summary>
+        /// <param name="PacketInterpreter">The callback to call whenever a packet is recieved.</param>
         public Client(PacketRecievedCallback PacketInterpreter)
         {
             ServerEndPoint = null;
@@ -56,7 +82,7 @@ namespace OpeNetLib
             await ServerInteractor.Send(data, ServerEndPoint);
         }
 
-        async void PacketCallback(OriginPacket packet)
+        async void PacketCallback(PacketCallbackParam packet)
         {
             if (packet.Data[0] == 0)
             {

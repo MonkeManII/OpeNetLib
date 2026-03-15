@@ -7,13 +7,22 @@ namespace OpeNetLibTestApp
 {
     public static class Program
     {
-        static Server? server;
-        static Client? client;
-
-        static string? PromptText(string question)
+        static string PromptText(string question)
         {
-            Console.WriteLine(question);
-            return Console.ReadLine();
+            string? line = null;
+            
+            while (line is null)
+            {
+                Console.WriteLine(question);
+                line = Console.ReadLine();
+
+                if (line is null)
+                {
+                    Console.WriteLine("Answer must be non-null!");
+                }
+            }
+
+            return line;
         }
 
         public static void Main()
@@ -22,92 +31,66 @@ namespace OpeNetLibTestApp
             Console.WriteLine("[DEBUG]");
 #endif
 
-            string? choice = PromptText("'server' to host server; IP address to connect to server.");
+            string choice = PromptText("'server' to host server; IP address to connect to server.\n\"localhost\" is permitted.");
 
-            if (choice is null)
-            {
-                Console.WriteLine("is null :(");
-                return;
-            }
 
             if (choice.Equals("server", StringComparison.CurrentCultureIgnoreCase))
             {
                 SpawnServer();
             } else
             {
-                IPEndPoint ep = IPEndPoint.Parse(choice.Replace("localhost", "127.0.0.1"));
-                SpawnClient(ep);
+                choice = choice.Replace("localhost", "127.0.0.1");
+                try
+                {
+                    IPEndPoint ep = IPEndPoint.Parse(choice);
+                    SpawnClient(ep);
+                } catch (FormatException)
+                {
+                    Console.WriteLine("{0} is not a valid IP!", choice);
+                }
             }
-
-            while (true) ;
         }
 
-        static void InterpretPacket(OriginPacket packet)
+        static async void InterpretPacket(PacketCallbackParam packet)
         {
             // Packet type 1: text message to server
             if (packet.Data[0] == 1)
             {
-                if (client is null)
+                if (packet.Server is not null)
                 {
-                    // Server repeats message to all clients
-                    byte[] originAddr = packet.Origin.Address.GetAddressBytes();
-                    byte[] originPort = BitConverter.GetBytes(packet.Origin.Port);
-
-                    byte[] newPacket = new byte[3 + originAddr.Length + originPort.Length + packet.Data.Length];
-
-                    // packet type of 2 is relayed message.
-                    newPacket[0] = 2;
-                    
-                    // byte  1: addr len
-                    // bytes 2..(2 + [1]): addr
-                    // byte  (3 + [1])..(7 + [1]): port
-                    // bytes (7 + [1]).. : text
-
-                    newPacket[1] = (byte)originAddr.Length;
-
-                    originAddr.CopyTo(newPacket, 2);
-                    originPort.CopyTo(newPacket, originAddr.Length + 3);
-                    packet.Data.CopyTo(newPacket, originAddr.Length + 7);
-
-                    server?.Broadcast(newPacket);
-                }
-            }
-
-            // Packet type 2: relayed message from server
-            if (packet.Data[0] == 2)
-            {
-                if (client is not null)
+                    await packet.Server.Broadcast(packet.Data);
+                } else if (packet.Client is not null)
                 {
-                    // Client logs message
-                    Span<byte> packetSpan = packet.Data.AsSpan();
+                    PacketDestructor packetReader = new(packet.Data);
 
-                    byte addrLen = packetSpan[1];
-                    Span<byte> addr = packetSpan[2..(addrLen + 2)];
-                    Span<byte> port = packetSpan[(addrLen + 3)..(addrLen + 7)];
+                    Span<byte> bUsername = packetReader.ReadBytes();
+                    Span<byte> bMessage = packetReader.ReadBytes();
 
-                    IPAddress originAddr = new(addr);
-                    IPEndPoint origin = new(originAddr, BitConverter.ToInt32(port));
-                    string message = Encoding.UTF8.GetString(packetSpan[(addrLen + 8)..]);
+                    string username = Encoding.UTF8.GetString(bUsername);
+                    string message = Encoding.UTF8.GetString(bMessage);
 
-                    Console.WriteLine("<{0}> {1}", origin, message);
+                    Console.WriteLine("<{0}> {1}", username, message);
                 }
             }
         }
 
         async static void SpawnClient(IPEndPoint ep)
         {
-            Console.WriteLine($"Attempting to connect to {ep}!");
+            Console.WriteLine("Attempting to connect to {0}!", ep);
             
-            client = new(InterpretPacket);
+            Client client = new(InterpretPacket);
             bool connect = await client.RequestConnect(ep, 1000);
+
+            string username = PromptText("What's your nickname?");
+            byte[] bUsername = Encoding.UTF8.GetBytes(username);
 
             if (!connect)
             {
-                Console.WriteLine($"Connection timed out.");
+                Console.WriteLine("Connection timed out.");
                 return;
             } else
             {
-                Console.WriteLine($"Connected to server socket at {client.ServerEndPoint}!");
+                Console.WriteLine("Connected to server socket at {0}!", client.ServerEndPoint);
             }
 
             while (true)
@@ -116,20 +99,19 @@ namespace OpeNetLibTestApp
                 if (text is null) continue;
 
                 byte[] message = Encoding.UTF8.GetBytes(text);
-                byte[] packet = new byte[message.Length + 1];
+                PacketConstructor constructor = new(1, message.Length + bUsername.Length + 5);
+                
+                constructor.Write(bUsername);
+                constructor.Write(message);
 
-                // Byte 0 determines packet type; type 1 is UTF8 text.
-                packet[0] = 1;
-                message.CopyTo(packet, 1);
-
-                client.Send(packet);
+                client.Send(constructor.ResultBytes());
             }
         }
 
         static async void SpawnServer()
         {
-            server = new(InterpretPacket);
-            Console.WriteLine($"Server started on port {server.Port}!");
+            Server server = new(InterpretPacket);
+            Console.WriteLine("Server started on port {0}!", server.Port);
         }
     }
 }

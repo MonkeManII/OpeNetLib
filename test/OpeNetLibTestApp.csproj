@@ -8,7 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\OpeNetLib\OpeNetLib.csproj" />
+    <ProjectReference Include="..\src\OpeNetLib.csproj" />
   </ItemGroup>
 
 </Project>

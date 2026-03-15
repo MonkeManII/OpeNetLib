@@ -5,15 +5,9 @@ namespace OpeNetLib.Internals
 {
     internal sealed class UdpTwoWay : IDisposable
     {
-
-        class ListenThreadParam(UdpReciever Reciever, PacketRecievedCallback Callback)
+        public void SetPacketCallback(PacketRecievedCallback callback)
         {
-            public bool Running = false;
-            public bool MarkedShutDown = false;
-            public bool AwaitingThreadShutdown => MarkedShutDown && Running;
-
-            public readonly PacketRecievedCallback Callback = Callback;
-            public readonly UdpReciever Reciever = Reciever;
+            OnPacketRecieved = callback;
         }
 
         public async void Dispose()
@@ -30,7 +24,7 @@ namespace OpeNetLib.Internals
         /// <summary>
         /// The callback called when a packet is recieved.
         /// </summary>
-        private readonly PacketRecievedCallback OnPacketRecieved;
+        private PacketRecievedCallback OnPacketRecieved;
         
         /// <summary>
         /// The reciever used to listen for packets.

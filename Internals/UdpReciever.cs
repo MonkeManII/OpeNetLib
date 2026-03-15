@@ -1,4 +1,5 @@
 ﻿using OpeNetLib.Packet;
+using System;
 using System.Net;
 using System.Net.Sockets;
 
@@ -27,7 +28,7 @@ namespace OpeNetLib.Internals
         {
             // Port 0 means "first open port".
             int nonNullPort = port is null ? 0 : (int)port;
-            _udpClient = new(nonNullPort);
+            _udpClient = new UdpClient(nonNullPort);
 
             // Because 0 means any, we have to now check manually instead of Port = nonNullPort.
             IPEndPoint? ep = (IPEndPoint?)_udpClient.Client.LocalEndPoint;

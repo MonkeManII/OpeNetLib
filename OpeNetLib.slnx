@@ -1,8 +1,4 @@
 <Solution>
-  <Configurations>
-    <Platform Name="x86" />
-  </Configurations>
-  <Project Path="src/OpeNetLib.csproj" Id="0fb0da01-4a26-7296-815f-592ba7c82152">
-    <Platform Project="x86" />
-  </Project>
+  <Project Path="../OpeNetLibTestApp/OpeNetLibTestApp.csproj" Id="b6c6a125-1ce7-4958-88a6-46e3973e8f02" />
+  <Project Path="OpeNetLib.csproj" />
 </Solution>

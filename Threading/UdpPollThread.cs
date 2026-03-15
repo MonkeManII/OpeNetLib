@@ -1,14 +1,12 @@
 ﻿
 using OpeNetLib.Internals;
-using System.Collections.Frozen;
-using System.Threading.Tasks;
 
 namespace OpeNetLib.Threading
 {
     /// <summary>
     /// Represents a <see cref="Thread"/> that polls for UDP packets.
     /// </summary>
-    internal class UdpListenThread
+    internal class UdpPollThread
     {
         /// <summary>
         /// The internal thread that actually runs the loop.
@@ -18,18 +16,20 @@ namespace OpeNetLib.Threading
         /// <summary>
         /// The thread parameters that allow for stopping the thread.
         /// </summary>
-        readonly UdpListenThreadParam _param;
+        readonly UdpMessageThreadParam _param;
 
         /// <summary>
         /// The <see cref="HashSet{UdpTwoWay}"/> used to queue polls into <see cref="_param.Polls"/>
         /// </summary>
-        HashSet<UdpTwoWay> QueuedAddPolls;
+        HashSet<UdpTwoWay> QueuedAddPolls = [];
+
+        bool usingPolls = false;
 
         /// <summary>
-        /// Creates a new <see cref="UdpListenThread"/> with the specified ID.
+        /// Creates a new <see cref="UdpPollThread"/> with the specified ID.
         /// </summary>
         /// <param name="id">The <see cref="Thread"/> ID, for debugging purposes.</param>
-        public UdpListenThread(string? id = null)
+        public UdpPollThread(string? id = null)
         {
             _thread = new(Listen);
             _param = new();
@@ -87,7 +87,20 @@ namespace OpeNetLib.Threading
         public async Task StopAndWait()
         {
             _param.MarkStopping();
+            usingPolls = false;
             await AwaitStop();
+        }
+
+        /// <summary>
+        /// Adds all polls in <see cref="QueuedAddPolls"/> to <see cref="_param.Polls"/>.
+        /// </summary>
+        void AddQueuedPolls()
+        {
+            foreach (UdpTwoWay poll in QueuedAddPolls)
+            {
+                _param.Polls.Add(poll);
+            }
+            QueuedAddPolls.Clear();
         }
 
         /// <summary>
@@ -97,38 +110,27 @@ namespace OpeNetLib.Threading
         /// <returns>Whether the poll was successfully added.</returns>
         public bool AddPoll(UdpTwoWay poll)
         {
-            return _param.Polls.Add(poll);
-        }
-
-        /// <summary>
-        /// Removes a <see cref="UdpTwoWay"/> poll.
-        /// </summary>
-        /// <param name="poll">The poll to remove.</param>
-        /// <returns>Whether the poll was successfully removed.</returns>
-        public bool RemovePoll(UdpTwoWay poll)
-        {
-            return _param.Polls.Remove(poll);
-        }
-
-        /// <summary>
-        /// Removes all polls from this <see cref="UdpListenThread"/>.
-        /// </summary>
-        public void ClearPolls()
-        {
-            _param.Polls.Clear();
+            if (usingPolls)
+            {
+                QueuedAddPolls.Add(poll);
+                return !_param.Polls.Contains(poll);
+            } else
+            {
+                return _param.Polls.Add(poll);
+            }
         }
 
         /// <summary>
         /// The main loop of the polling <see cref="Thread"/>.
         /// </summary>
-        /// <param name="possibleParam">A <see cref="UdpListenThreadParam"/> controlling the state of the thread.</param>
+        /// <param name="possibleParam">A <see cref="UdpMessageThreadParam"/> controlling the state of the thread.</param>
         /// <exception cref="ArgumentException"></exception>
         void Listen(object? possibleParam)
         {
-            if (possibleParam is not UdpListenThreadParam param)
+            if (possibleParam is not UdpMessageThreadParam param)
             {
                 throw new ArgumentException(
-                    $"Argument to {nameof(Listen)} must be of type {nameof(UdpListenThreadParam)}!",
+                    $"Argument to {nameof(Listen)} must be of type {nameof(UdpMessageThreadParam)}!",
                     nameof(possibleParam)
                 );
             }
@@ -138,10 +140,13 @@ namespace OpeNetLib.Threading
                 while (!param.IsStopping())
                 {
                     // TODO make it not use toarray because apparently locking isnt enough
-                    foreach (UdpTwoWay poll in param.Polls.ToArray())
+                    usingPolls = true;
+                    foreach (UdpTwoWay poll in param.Polls)
                     {
                         poll.ListenForPackets();
                     }
+                    usingPolls = false;
+                    AddQueuedPolls();
                     Thread.Sleep(1);
                 }
             } catch (Exception)

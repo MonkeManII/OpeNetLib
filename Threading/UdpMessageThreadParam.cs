@@ -3,9 +3,9 @@
 namespace OpeNetLib.Threading
 {
     /// <summary>
-    /// Represents the <see cref="Thread"/> parameter for a <see cref="UdpListenThread"/>.
+    /// Represents the <see cref="Thread"/> parameter for a <see cref="UdpPollThread"/>.
     /// </summary>
-    internal class UdpListenThreadParam
+    internal class UdpMessageThreadParam
     {
         /// <summary>
         /// The state of the thread.
@@ -26,7 +26,7 @@ namespace OpeNetLib.Threading
         internal readonly HashSet<UdpTwoWay> Polls = [];
 
         /// <summary>
-        /// Marks this <see cref="UdpListenThread"/> as completely stopped.
+        /// Marks this <see cref="UdpPollThread"/> as completely stopped.
         /// </summary>
         internal void MarkStopped()
         {
@@ -35,7 +35,7 @@ namespace OpeNetLib.Threading
         }
 
         /// <summary>
-        /// Marks this <see cref="UdpListenThread"/> as up and running.
+        /// Marks this <see cref="UdpPollThread"/> as up and running.
         /// </summary>
         internal void MarkRunning()
         {
@@ -44,7 +44,7 @@ namespace OpeNetLib.Threading
         }
 
         /// <summary>
-        /// Tells this <see cref="UdpListenThread"/> to stop execution.
+        /// Tells this <see cref="UdpPollThread"/> to stop execution.
         /// </summary>
         internal void MarkStopping()
         {
@@ -52,7 +52,7 @@ namespace OpeNetLib.Threading
         }
 
         /// <summary>
-        /// Checks whether this <see cref="UdpListenThread"/> is running.
+        /// Checks whether this <see cref="UdpPollThread"/> is running.
         /// </summary>
         /// <returns>Whether the thread is marked as running.</returns>
         internal bool IsRunning()
@@ -61,7 +61,7 @@ namespace OpeNetLib.Threading
         }
 
         /// <summary>
-        /// Checks whether this <see cref="UdpListenThread"/> is stopping, but not stopped.
+        /// Checks whether this <see cref="UdpPollThread"/> is stopping, but not stopped.
         /// </summary>
         /// <returns>Whether the thread is wrapping up before stopping.</returns>
         internal bool IsStopping()

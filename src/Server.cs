@@ -9,19 +9,39 @@ namespace OpeNetLib
     {
         public int Port => ConnectionReciever.RecieverPort;
 
-        readonly UdpPollThread PollingThread;
+        readonly TwoWayPollThread PollingThread;
         readonly UdpTwoWay ConnectionReciever;
         readonly PacketRecievedCallback Callback;
-        readonly Dictionary<IPEndPoint, UdpTwoWay> ConnectedClients;
+        readonly Dictionary<long, Connection> ConnectedClients;
+
+        internal static long ConnectionID(Connection connection)
+        {
+            byte[] port = BitConverter.GetBytes((short)connection.RecieverEndpoint.Port);
+            byte[] address = connection.RecieverEndpoint.Address.GetAddressBytes();
+            
+            byte[] bytes = new byte[8];
+            port.CopyTo(bytes, 0);
+            address.CopyTo(bytes, 2);
+
+            return BitConverter.ToInt64(bytes);
+        }
 
         public async void Dispose()
         {
             ConnectionReciever.Dispose();
         }
 
+        internal void UpdateTimeout(UdpMessageThreadParam _)
+        {
+            foreach (Connection con in ConnectedClients.Values)
+            {
+                con.UpdateTimeout();
+            }
+        }
+
         public Server(PacketRecievedCallback PacketInterpreter)
         {
-            PollingThread = new("Server Listen Thread");
+            PollingThread = new(id: "Server Listen Thread", server: this, callback: UpdateTimeout);
             ConnectedClients = [];
             ConnectionReciever = new UdpTwoWay(ConnectionCallback);
             Callback = PacketInterpreter;
@@ -29,21 +49,21 @@ namespace OpeNetLib
             PollingThread.StartThread();
         }
 
-        public async Task Send(byte[] data, IPEndPoint connection)
+        public async Task Send(byte[] data, int connectionID)
         {
-            if (!ConnectedClients.TryGetValue(connection, out UdpTwoWay? messenger))
+            if (!ConnectedClients.TryGetValue(connectionID, out Connection? connection))
             {
                 // TODO debug log
                 return;
             }
-            await messenger.Send(data, connection);
+            await connection.Send(data);
         }
 
         public async Task Broadcast(byte[] data)
         {
-            foreach (KeyValuePair<IPEndPoint, UdpTwoWay> client in ConnectedClients)
+            foreach (Connection client in ConnectedClients.Values)
             {
-                await client.Value.Send(data, client.Key);
+                await client.Send(data);
             }
         }
 
@@ -53,9 +73,10 @@ namespace OpeNetLib
             
             IPEndPoint client = IPEndPoint.Parse($"{packet.Origin.Address}:{clientReceptionPort}");
             UdpTwoWay clientInteractor = new(Callback);
+            Connection newConnection = new(client, clientInteractor, 1000);
 
             PollingThread.AddPoll(clientInteractor);
-            ConnectedClients.Add(client, clientInteractor);
+            ConnectedClients.Add(ConnectionID(newConnection), newConnection);
 
             byte[] port = BitConverter.GetBytes(clientInteractor.RecieverPort);
             byte[] outPacket = new byte[1 + port.Length];

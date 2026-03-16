@@ -13,7 +13,7 @@ namespace OpeNetLib
         /// <summary>
         /// The polling thread for packet polling.
         /// </summary>
-        readonly UdpPollThread PollingThread;
+        readonly TwoWayPollThread PollingThread;
 
         /// <summary>
         /// The two-way connection for interacting with the server.
@@ -47,7 +47,7 @@ namespace OpeNetLib
         public Client(PacketRecievedCallback PacketInterpreter)
         {
             ServerEndPoint = null;
-            PollingThread = new("Client Listen Thread");
+            PollingThread = new(id: "Client Listen Thread", client: this);
             ServerInteractor = new UdpTwoWay(PacketCallback);
             Callback = PacketInterpreter;
             PollingThread.AddPoll(ServerInteractor);

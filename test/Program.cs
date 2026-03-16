@@ -53,23 +53,44 @@ namespace OpeNetLibTestApp
 
         static async void InterpretPacket(PacketCallbackParam packet)
         {
-            // Packet type 1: text message to server
+            // Packet type 0: handshake (hardcoded)
+
+            // Packet type 1: text message (server relays to clients; client logs)
             if (packet.Data[0] == 1)
             {
+                // If server recieved packet
                 if (packet.Server is not null)
                 {
                     await packet.Server.Broadcast(packet.Data);
-                } else if (packet.Client is not null)
+                }
+                
+                // If client recieved packet
+                else if (packet.Client is not null)
                 {
                     PacketDestructor packetReader = new(packet.Data);
 
-                    Span<byte> bUsername = packetReader.ReadBytes();
-                    Span<byte> bMessage = packetReader.ReadBytes();
-
-                    string username = Encoding.UTF8.GetString(bUsername);
-                    string message = Encoding.UTF8.GetString(bMessage);
+                    string username = packetReader.ReadUTF8();
+                    string message = packetReader.ReadUTF8();
 
                     Console.WriteLine("<{0}> {1}", username, message);
+                }
+            }
+
+            // Packet type 2: ping message
+            if (packet.Data[0] == 2)
+            {
+                PacketConstructor newPacket = new(2, 300);
+
+                // If server recieved packet
+                if (packet.Server is not null)
+                {
+                    await packet.Server.Send(newPacket.ResultBytes(), 0);
+                }
+                
+                // If client recieved packet
+                else
+                {
+                    packet.Client?.Send([5]);
                 }
             }
         }
@@ -82,7 +103,6 @@ namespace OpeNetLibTestApp
             bool connect = await client.RequestConnect(ep, 1000);
 
             string username = PromptText("What's your nickname?");
-            byte[] bUsername = Encoding.UTF8.GetBytes(username);
 
             if (!connect)
             {
@@ -98,11 +118,10 @@ namespace OpeNetLibTestApp
                 string? text = Console.ReadLine();
                 if (text is null) continue;
 
-                byte[] message = Encoding.UTF8.GetBytes(text);
-                PacketConstructor constructor = new(1, message.Length + bUsername.Length + 5);
+                PacketConstructor constructor = new(1, 65536);
                 
-                constructor.Write(bUsername);
-                constructor.Write(message);
+                constructor.WriteUTF8(username);
+                constructor.WriteUTF8(text);
 
                 client.Send(constructor.ResultBytes());
             }

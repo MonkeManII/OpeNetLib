@@ -1,4 +1,5 @@
 <Solution>
-  <Project Path="test/OpeNetLibTestApp.csproj" Id="b6c6a125-1ce7-4958-88a6-46e3973e8f02" />
+  <Project Path="OpeNetLibTests/OpeNetLibTests.csproj" Id="db111607-02e9-477d-95a7-0a9d4bec9ce4" />
   <Project Path="src/OpeNetLib.csproj" />
+  <Project Path="test/OpeNetLibTestApp.csproj" Id="b6c6a125-1ce7-4958-88a6-46e3973e8f02" />
 </Solution>

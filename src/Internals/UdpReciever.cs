@@ -1,5 +1,4 @@
 ﻿using OpeNetLib.Packet;
-using System;
 using System.Net;
 using System.Net.Sockets;
 
@@ -8,7 +7,7 @@ namespace OpeNetLib.Internals
     /// <summary>
     /// Represents a port on this machine that can recieve UDP packets.
     /// </summary>
-    public sealed class UdpReciever : IDisposable
+    internal sealed class UdpReciever : IDisposable
     {
         /// <summary>
         /// The <see cref="UdpClient"/> that runs all the details behind-the-scenes.
@@ -18,13 +17,13 @@ namespace OpeNetLib.Internals
         /// <summary>
         /// The port that this reciever is bound to.
         /// </summary>
-        public readonly int Port;
+        internal readonly int Port;
 
         /// <summary>
         /// Creates a new UdpReciever bound to the specified port.
         /// </summary>
         /// <param name="port">The port to bind this reciever to, or null if first available.</param>
-        public UdpReciever(int? port = null)
+        internal UdpReciever(int? port = null)
         {
             // Port 0 means "first open port".
             int nonNullPort = port is null ? 0 : (int)port;
@@ -47,7 +46,7 @@ namespace OpeNetLib.Internals
         /// <returns>
         /// A <see cref="Task{}>"/> that completes when a packet is recieved.
         /// </returns>
-        public async Task<PacketCallbackParam> ReceiveFirstAsync(int? msTimeout = null)
+        internal async Task<PacketCallbackParam> ReceiveFirstAsync(int? msTimeout = null)
         {
             UdpReceiveResult result;
 
@@ -66,7 +65,7 @@ namespace OpeNetLib.Internals
         ///     </para>
         /// </summary>
         /// <returns>The first <see cref="PacketCallbackParam"/> in reception, or null if none.</returns>
-        public PacketCallbackParam? RecieveFirst()
+        internal PacketCallbackParam? RecieveFirst()
         {
             PacketCallbackParam? result = null;
 

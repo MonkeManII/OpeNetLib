@@ -1,5 +1,4 @@
-﻿using System;
-using System.Net;
+﻿using System.Net;
 using System.Net.Sockets;
 
 namespace OpeNetLib.Internals
@@ -7,25 +6,25 @@ namespace OpeNetLib.Internals
     /// <summary>
     /// Sends UDP packets to a remote device.
     /// </summary>
-    public sealed class UdpSender : IDisposable
+    internal sealed class UdpSender : IDisposable
     {
         private readonly UdpClient _udpClient;
-        public readonly string SendIP;
-        public readonly int SendPort;
-        public readonly IPEndPoint EndPoint;
+        internal readonly string SendIP;
+        internal readonly int SendPort;
+        internal readonly IPEndPoint EndPoint;
 
         /// <summary>
         /// Creates a new <see cref="UdpSender"/> connected to a specified address.
         /// </summary>
         /// <param name="toIp">The IPv4 address to direct this sender's packets to.</param>
         /// <param name="toPort">The port to direct the packets to.</param>
-        public UdpSender(string toIp, int toPort) : this(IPEndPoint.Parse($"{toIp}:{toPort}")) { }
+        internal UdpSender(string toIp, int toPort) : this(IPEndPoint.Parse($"{toIp}:{toPort}")) { }
 
         /// <summary>
         /// Creates a new <see cref="UdpSender"/> connected to a specified IP endpoint.
         /// </summary>
         /// <param name="address">The endpoint to direct this sender's packets to.</param>
-        public UdpSender(IPEndPoint address)
+        internal UdpSender(IPEndPoint address)
         {
             SendIP = address.Address.ToString();
             SendPort = address.Port;
@@ -53,7 +52,7 @@ namespace OpeNetLib.Internals
         ///     </para>
         /// </returns>
         /// <todo>Research more into what the int is.</todo>
-        public async Task<int> Send(byte[] data)
+        internal async Task<int> Send(byte[] data)
         {
             // is this an opcode?
             int opcode = await _udpClient.SendAsync(data, data.Length);

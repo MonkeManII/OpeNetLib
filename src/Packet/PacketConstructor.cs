@@ -5,6 +5,7 @@ namespace OpeNetLib.Packet
     /// <summary>
     /// A class used to construct <see cref="byte[]"/> packets to send over network.
     /// </summary>
+    [Obsolete("OpeNetLib's binary serializer has been deprecated. Use an external library instead.")]
     public class PacketConstructor
     {
         /// <summary>

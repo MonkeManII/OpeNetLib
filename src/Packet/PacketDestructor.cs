@@ -6,6 +6,7 @@ namespace OpeNetLib.Packet
     /// <summary>
     /// A class used to destruct <see cref="byte[]"/> packets into objects.
     /// </summary>
+    [Obsolete("OpeNetLib's binary serializer has been deprecated. Use an external library instead.")]
     public class PacketDestructor
     {
         /// <summary>

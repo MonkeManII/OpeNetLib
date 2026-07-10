@@ -1,5 +1,6 @@
 ﻿namespace OpeNetLib.Packet
 {
+    [Obsolete("OpeNetLib's binary serializer has been deprecated. Use an external library instead.")]
     public interface IByteConvertable<TThis>
         where TThis : IByteConvertable<TThis>
     {

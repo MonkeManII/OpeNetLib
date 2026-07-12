@@ -8,6 +8,8 @@ namespace OpeNetLib.Threading
     /// </summary>
     internal sealed class TwoWayPollThread
     {
+        Exception? _lastError = null;
+
         /// <summary>
         /// The internal thread that actually runs the loop.
         /// </summary>
@@ -130,6 +132,8 @@ namespace OpeNetLib.Threading
             }
         }
 
+        public Exception? GetError() => _lastError;
+
         /// <summary>
         /// The main loop of the polling <see cref="Thread"/>.
         /// </summary>
@@ -161,9 +165,7 @@ namespace OpeNetLib.Threading
                 }
             } catch (Exception e)
             {
-                param.MarkStopped();
-                Console.WriteLine(e.Message);
-                throw;
+                Console.WriteLine("An error occurred on the polling thread:\n{0}", e);
             }
         }
     }

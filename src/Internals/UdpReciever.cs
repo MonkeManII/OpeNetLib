@@ -20,6 +20,11 @@ namespace OpeNetLib.Internals
         internal readonly int Port;
 
         /// <summary>
+        /// The 
+        /// </summary>
+        readonly PacketMerger _fragManager;
+
+        /// <summary>
         /// Creates a new UdpReciever bound to the specified port.
         /// </summary>
         /// <param name="port">The port to bind this reciever to, or null if first available.</param>
@@ -38,6 +43,8 @@ namespace OpeNetLib.Internals
             {
                 Port = 0;
             }
+
+            _fragManager = new();
         }
 
         /// <summary>
@@ -48,39 +55,52 @@ namespace OpeNetLib.Internals
         /// </returns>
         internal async Task<PacketCallbackParam> ReceiveFirstAsync(int? msTimeout = null)
         {
-            UdpReceiveResult result;
 
             using CancellationTokenSource tokenSrc = new();
             if (msTimeout is not null)
                 tokenSrc.CancelAfter((int)msTimeout);
-            result = await _udpClient.ReceiveAsync(tokenSrc.Token);
 
-            return new PacketCallbackParam(result.RemoteEndPoint, result.Buffer, null, null);
+            byte[]? result = null;
+            UdpReceiveResult? sucRes = null;
+
+            while (!tokenSrc.IsCancellationRequested)
+            {
+                sucRes = await _udpClient.ReceiveAsync(tokenSrc.Token);
+                Console.WriteLine("Fragment recieved!");
+                if (sucRes.HasValue && _fragManager.OnFragmentRecieved(sucRes.Value.Buffer, out result)) break;
+                Console.WriteLine("Continuing...");
+            }
+
+            // TODO make cancellation tokens work :O
+            if (sucRes == null || result == null)
+                throw new Exception($"How did you get it to do this??? (Presumably you canceled your call to {nameof(ReceiveFirstAsync)}. Don't do that.)");
+
+            return new PacketCallbackParam(sucRes.Value.RemoteEndPoint, result, null, null);
         }
 
         /// <summary>
         ///     Recieves the first <see cref="PacketCallbackParam"/> queued for recieving.
         ///     <para>
-        ///         If no packet is available, do not wait, and return null.
+        ///         Will stop further code from running until the packet is recieved.
         ///     </para>
         /// </summary>
         /// <returns>The first <see cref="PacketCallbackParam"/> in reception, or null if none.</returns>
-        internal PacketCallbackParam? RecieveFirst()
+        internal PacketCallbackParam RecieveFirst()
         {
-            PacketCallbackParam? result = null;
-
-            if (_udpClient.Available > 0)
+            // this can't be cancelled, we got all damn day
+            IPEndPoint? _outEP = null;
+            while (true)
             {
-                IPEndPoint? _outEP = null;
                 byte[] bytes = _udpClient.Receive(ref _outEP);
-
-                if (_outEP is not null)
+                if (_outEP != null)
                 {
-                    result = new(_outEP, bytes, null, null);
+                    if (_fragManager.OnFragmentRecieved(bytes, out byte[]? packet))
+                    {
+                        return new(_outEP, packet, null, null);
+                    }
                 }
+                Thread.Sleep(0);
             }
-
-            return result;
         }
 
         public void Dispose()

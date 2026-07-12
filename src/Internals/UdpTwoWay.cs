@@ -46,28 +46,12 @@ namespace OpeNetLib.Internals
             _reciever = new();
         }
 
-        public int ListenForPackets(Client? client, Server? server)
+        internal async Task ListenForPackets(Client? client, Server? server)
         {
-            int packets = 0;
-
-            PacketCallbackParam? recievedPacket;
-
-            do
-            {
-                recievedPacket = _reciever.RecieveFirst();
-
-                if (recievedPacket is not null)
-                {
-                    recievedPacket.Server ??= server;
-                    recievedPacket.Client ??= client;
-
-                    OnPacketRecieved(recievedPacket);
-                    ++packets;
-                }
-            }
-            while (recievedPacket is not null);
-
-            return packets;
+            PacketCallbackParam? c = await _reciever.ReceiveFirstAsync(4);
+            c.Client = client;
+            c.Server = server;
+            OnPacketRecieved(c);
         }
 
         /// <summary>

@@ -8,10 +8,13 @@ namespace OpeNetLib.Internals
     /// </summary>
     internal sealed class UdpSender : IDisposable
     {
+        const int MAX_SPLIT_PACKET_SIZE = 0b0000_1000_0000_0000;
+
         private readonly UdpClient _udpClient;
         internal readonly string SendIP;
         internal readonly int SendPort;
         internal readonly IPEndPoint EndPoint;
+        readonly PacketSplitter _splitter;
 
         /// <summary>
         /// Creates a new <see cref="UdpSender"/> connected to a specified address.
@@ -32,6 +35,8 @@ namespace OpeNetLib.Internals
 
             _udpClient = new();
             _udpClient.Connect(address.Address, address.Port);
+
+            _splitter = new(MAX_SPLIT_PACKET_SIZE);
         }
 
         public void Dispose()
@@ -54,8 +59,13 @@ namespace OpeNetLib.Internals
         /// <todo>Research more into what the int is.</todo>
         internal async Task<int> Send(byte[] data)
         {
-            // is this an opcode?
-            int opcode = await _udpClient.SendAsync(data, data.Length);
+            // is this an opcode? idk
+            PacketFragment[] frags = _splitter.SplitPacket(data);
+            int opcode = 0;
+            foreach (PacketFragment f in frags)
+            {
+                opcode = await _udpClient.SendAsync(f.data, f.data.Length);
+            }
             return opcode;
         }
     }

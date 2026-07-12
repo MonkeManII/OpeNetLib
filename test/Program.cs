@@ -84,7 +84,7 @@ namespace OpeNetLibTestApp
                 // If server recieved packet
                 if (packet.Server is not null)
                 {
-                    await packet.Server.Send(newPacket.ResultBytes(), 0);
+                    await packet.Server.Send(newPacket.ResultBytes(), new ClientReference(packet.Origin));
                 }
                 
                 // If client recieved packet

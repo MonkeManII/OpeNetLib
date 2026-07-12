@@ -3,7 +3,7 @@ using OpeNetLib.Packet;
 using OpeNetLib.Threading;
 using System.Net;
 
-namespace OpeNetLib
+namespace OpeNetLib.ClientSide
 {
     /// <summary>
     /// Represents a UDP client that can connect to one server.
@@ -90,7 +90,7 @@ namespace OpeNetLib
                 if (portConfirmed) return;
 
                 int port = BitConverter.ToInt32(packet.Data.AsSpan()[1..5]);
-                ServerEndPoint = IPEndPoint.Parse($"{ServerEndPoint.Address}:{port}");
+                ServerEndPoint = new IPEndPoint(ServerEndPoint.Address, port);
                 portConfirmed = true;
                 ServerInteractor.SetPacketCallback(Callback);
             }

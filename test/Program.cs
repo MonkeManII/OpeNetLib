@@ -53,44 +53,51 @@ namespace OpeNetLibTestApp
 
         static async void InterpretPacket(PacketCallbackParam packet)
         {
+            PacketDestructor packetReader = new(packet.Data);
+            byte type = packetReader.ReadByte();
+
             // Packet type 0: handshake (hardcoded)
 
             // Packet type 1: text message (server relays to clients; client logs)
-            if (packet.Data[0] == 1)
+            if (type == 1)
             {
                 // If server recieved packet
                 if (packet.Server is not null)
                 {
                     await packet.Server.Broadcast(packet.Data);
                 }
-                
-                // If client recieved packet
-                else if (packet.Client is not null)
-                {
-                    PacketDestructor packetReader = new(packet.Data);
 
-                    string username = packetReader.ReadUTF8();
-                    string message = packetReader.ReadUTF8();
+                string username = packetReader.ReadUTF8();
+                string message = packetReader.ReadUTF8();
 
-                    Console.WriteLine("<{0}> {1}", username, message);
-                }
+                Console.WriteLine("[{0}] >> {1}", username, message);
             }
 
-            // Packet type 2: ping message
-            if (packet.Data[0] == 2)
+            // Packet type 2: server message (server & client logs)
+            // Server doesn't broadcast to prevent client from spoofing.
+            if (type == 2)
             {
-                PacketConstructor newPacket = new(2, 300);
+                string message = packetReader.ReadUTF8();
+                Console.WriteLine("SERVER >> {0}", message);
+            }
 
-                // If server recieved packet
-                if (packet.Server is not null)
+            // Packet type 3:
+            //  CLIENT: kicked from server
+            //  SERVER: client disconnected intentionally
+            if (type == 3)
+            {
+                if (packet.Client is not null)
                 {
-                    await packet.Server.Send(newPacket.ResultBytes(), 0);
+                    Console.WriteLine("You have been forcefully disconnected.");
+                    Console.WriteLine("Future attempts to send messages will not reach the server.");
                 }
                 
-                // If client recieved packet
-                else
+                if (packet.Server is not null)
                 {
-                    packet.Client?.Send([5]);
+                    EndpointIdentifier id = packetReader.Read(EndpointIdentifier.Serializer);
+                    IPEndPoint endpoint = id.ToEndpoint();
+
+                    Console.WriteLine($"Client {endpoint} disconnected!");
                 }
             }
         }
@@ -102,24 +109,25 @@ namespace OpeNetLibTestApp
             Client client = new(InterpretPacket);
             bool connect = await client.RequestConnect(ep, 1000);
 
-            string username = PromptText("What's your nickname?");
-
             if (!connect)
             {
                 Console.WriteLine("Connection timed out.");
                 return;
             } else
             {
-                Console.WriteLine("Connected to server socket at {0}!", client.ServerEndPoint);
+                Console.WriteLine("Connected to server socket at {0}!", client.PermanentConnection?.RecieverEndpoint);
             }
+            
+            string username = PromptText("What's your nickname?");
 
             while (true)
             {
                 string? text = Console.ReadLine();
                 if (text is null) continue;
 
-                PacketConstructor constructor = new(1, 65536);
-                
+                PacketConstructor constructor = new(65536);
+
+                constructor.WriteByte(1);
                 constructor.WriteUTF8(username);
                 constructor.WriteUTF8(text);
 
@@ -130,7 +138,20 @@ namespace OpeNetLibTestApp
         static async void SpawnServer()
         {
             Server server = new(InterpretPacket);
-            Console.WriteLine("Server started on port {0}!", server.Port);
+            Console.WriteLine("Server started on port {0}!", server.NegotiatorPort);
+
+            while (true)
+            {
+                string? text = Console.ReadLine();
+                if (text is null) continue;
+
+                PacketConstructor constructor = new(65536);
+
+                constructor.WriteByte(2);
+                constructor.WriteUTF8(text);
+
+                await server.Broadcast(constructor.ResultBytes());
+            }
         }
     }
 }

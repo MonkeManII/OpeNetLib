@@ -1,4 +1,5 @@
 ﻿
+using OpeNetLib.Serializer;
 using System.Text;
 
 namespace OpeNetLib.Packet
@@ -26,29 +27,7 @@ namespace OpeNetLib.Packet
         public PacketDestructor(byte[] bytes)
         {
             packet = bytes;
-
-            // skip type byte
-            position = 1;
-        }
-
-        /// <summary>
-        /// Returns the type identifier of this packet.
-        /// </summary>
-        /// <returns>A <see cref="byte"/> representing the type of this packet.</returns>
-        public byte PacketType()
-        {
-            return packet[0];
-        }
-
-        /// <summary>
-        /// Reads the next <typeparamref name="T"/> from the packet, and advances <see cref="position"/> by the number of bytes read.
-        /// </summary>
-        /// <typeparam name="T">The type to read.</typeparam>
-        /// <returns>A <typeparamref name="T"/> constructed from <see cref="IByteConvertable{TThis}.FromBytes(Span{byte})"/></returns>
-        public T Read<T>() 
-            where T : IByteConvertable<T>
-        {
-            return T.FromBytes(ReadBytes());
+            position = 0;
         }
 
         /// <summary>
@@ -57,13 +36,8 @@ namespace OpeNetLib.Packet
         /// <returns>A <see cref="Span{byte}"/> read from the packet.</returns>
         public Span<byte> ReadBytes()
         {
-            Span<byte> pkSpan = packet.AsSpan();
-
-            int len = BitConverter.ToUInt16(pkSpan.Slice(position, 2));
-            int oldPos = position + 2;
-            position += 2 + len;
-
-            return pkSpan.Slice(oldPos, len);
+            int len = ReadUShort();
+            return ReadExactly(len);
         }
 
         /// <summary>
@@ -81,6 +55,15 @@ namespace OpeNetLib.Packet
         }
 
         #region Specialized Read Functions
+
+        /// <summary>
+        /// Reads the next <see cref="Span{byte}"/> from the packet as a string.
+        /// <para>
+        /// The specified <see cref="Encoding"/> should match the one used in writing.
+        /// </para>
+        /// </summary>
+        /// <returns>A <see cref="string"/> from the next <see cref="Span{byte}"/> of the packet.</returns>
+        public string ReadString(Encoding encoding) => encoding.GetString(ReadBytes());
 
         /// <summary>
         /// Reads the next <see cref="Span{byte}"/> from the packet as a UTF8 string.
@@ -168,6 +151,27 @@ namespace OpeNetLib.Packet
         // whatever, if .NET changes their Half implementation,
         // I (and the five other people that use Halfs [halves?]) are cooked.
         public Half ReadHalf() => BitConverter.ToHalf(ReadExactly(2));
+
+        #endregion
+
+        #region Generic Read Functions
+
+        /// <summary>
+        /// Reads the next <typeparamref name="T"/> from the packet, and advances <see cref="position"/> by the number of bytes read.
+        /// </summary>
+        /// <typeparam name="T">The type to read.</typeparam>
+        /// <returns>A <typeparamref name="T"/> constructed from the specified serializer.</returns>
+        public T Read<T>(ObjectSerializer<T> serializer)
+        {
+            if (serializer.TryGetByteWidth(out int w))
+            {
+                return serializer.Deserialize(ReadExactly(w));
+            }
+            else
+            {
+                return serializer.Deserialize(ReadBytes());
+            }
+        }
 
         #endregion
     }

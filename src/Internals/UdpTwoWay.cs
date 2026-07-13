@@ -61,7 +61,13 @@ namespace OpeNetLib.Internals
                     recievedPacket.Server ??= server;
                     recievedPacket.Client ??= client;
 
-                    OnPacketRecieved(recievedPacket);
+                    try
+                    {
+                        OnPacketRecieved(recievedPacket);
+                    } catch(Exception e)
+                    {
+                        Console.WriteLine($"Malformed packet! (exception: {e.Message})");
+                    }
                     ++packets;
                 }
             }
@@ -82,7 +88,7 @@ namespace OpeNetLib.Internals
         ///         Using one <see cref="UdpTwoWay"/> to send to various addresses causes repeated connections and disconnections.
         ///     </para>
         ///     <para>
-        ///         In general, this should be avoided - use multiple if sending to many IPs.
+        ///         In general, this should be avoided - use multiple two-ways if sending to many IPs.
         ///     </para>
         /// </remarks>
         public async Task Send(byte[] bytes, string ip, int port)
@@ -111,7 +117,7 @@ namespace OpeNetLib.Internals
         /// </remarks>
         public async Task Send(byte[] bytes, IPEndPoint endPoint)
         {
-            if (_sender is null || !(_sender.EndPoint == endPoint))
+            if (_sender is null || EndpointIdentifier.FromEndpoint(_sender.EndPoint) != EndpointIdentifier.FromEndpoint(endPoint))
             {
                 _sender?.Dispose();
                 _sender = new(endPoint);

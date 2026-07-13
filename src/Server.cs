@@ -5,26 +5,38 @@ using System.Net;
 
 namespace OpeNetLib
 {
+    /// <summary>
+    /// Represents a UDP server that can connect to and negotiate with clients.
+    /// </summary>
     public sealed class Server : IDisposable
     {
-        public int Port => ConnectionReciever.RecieverPort;
+        /// <summary>
+        /// The port used for negotiating with new clients.
+        /// </summary>
+        public int NegotiatorPort => ConnectionReciever.RecieverPort;
 
+        /// <summary>
+        /// The thread used for polling new packets.
+        /// </summary>
         readonly TwoWayPollThread PollingThread;
+
+        /// <summary>
+        /// The reciever used for connecting with new clients.
+        /// </summary>
+        /// <remarks>
+        /// This is what <see cref="Client.RequestConnect"/> expects.
+        /// </remarks>
         readonly UdpTwoWay ConnectionReciever;
+
+        /// <summary>
+        /// The callback to use when a packet is recieved.
+        /// </summary>
         readonly PacketRecievedCallback Callback;
-        readonly Dictionary<long, Connection> ConnectedClients;
 
-        internal static long ConnectionID(Connection connection)
-        {
-            byte[] port = BitConverter.GetBytes((short)connection.RecieverEndpoint.Port);
-            byte[] address = connection.RecieverEndpoint.Address.GetAddressBytes();
-            
-            byte[] bytes = new byte[8];
-            port.CopyTo(bytes, 0);
-            address.CopyTo(bytes, 2);
-
-            return BitConverter.ToInt64(bytes);
-        }
+        /// <summary> 
+        /// Represents 
+        /// </summary>
+        readonly Dictionary<EndpointIdentifier, Connection> ConnectedClients;
 
         public async void Dispose()
         {
@@ -49,11 +61,10 @@ namespace OpeNetLib
             PollingThread.StartThread();
         }
 
-        public async Task Send(byte[] data, int connectionID)
+        public async Task Send(byte[] data, EndpointIdentifier connectionID)
         {
             if (!ConnectedClients.TryGetValue(connectionID, out Connection? connection))
             {
-                // TODO debug log
                 return;
             }
             await connection.Send(data);
@@ -69,22 +80,29 @@ namespace OpeNetLib
 
         internal async void ConnectionCallback(PacketCallbackParam packet)
         {
-            int clientReceptionPort = BitConverter.ToInt32(packet.Data, 1);
+            PacketDestructor reader = new(packet.Data);
             
-            IPEndPoint client = IPEndPoint.Parse($"{packet.Origin.Address}:{clientReceptionPort}");
+            // 0 is the negotiation packet
+            if (reader.ReadByte() != 0) return;
+
+            ushort clientReceptionPort = reader.ReadUShort();
+
+            IPEndPoint client = new (packet.Origin.Address, clientReceptionPort);
             UdpTwoWay clientInteractor = new(Callback);
             Connection newConnection = new(client, clientInteractor, 1000);
 
             PollingThread.AddPoll(clientInteractor);
-            ConnectedClients.Add(ConnectionID(newConnection), newConnection);
+            ConnectedClients.Add(
+                EndpointIdentifier.FromEndpoint(newConnection.RecieverEndpoint),
+                newConnection
+            );
 
-            byte[] port = BitConverter.GetBytes(clientInteractor.RecieverPort);
-            byte[] outPacket = new byte[1 + port.Length];
-            outPacket[0] = 0;
-            port.CopyTo(outPacket, 1);
+            PacketConstructor affirmer = new(5);
+            affirmer.WriteByte(0);
+            affirmer.WriteUShort((ushort)clientInteractor.RecieverPort);
 
             await clientInteractor.Send(
-                outPacket,
+                affirmer.ResultBytes(),
                 client
             );
         }

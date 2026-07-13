@@ -6,12 +6,12 @@ namespace OpeNetLib
     /// <summary>
     /// Holds data that a <see cref="Server"/> and a <see cref="Client"/> know about each other.
     /// </summary>
-    internal sealed class Connection
+    public sealed class Connection
     {
         /// <summary>
         /// The <see cref="IPEndPoint"/> of the other's receiver port.
         /// </summary>
-        internal readonly IPEndPoint RecieverEndpoint;
+        public readonly IPEndPoint RecieverEndpoint;
 
         /// <summary>
         /// The <see cref="UdpTwoWay"/> used to contact the other.
@@ -21,7 +21,7 @@ namespace OpeNetLib
         /// <summary>
         /// The maximum timeout (in milliseconds) before this <see cref="Connection"/> terminates.
         /// </summary>
-        internal readonly int MaxTimeout;
+        public readonly int MaxTimeout;
 
         /// <summary>
         /// The current time remaining before timeout.
@@ -87,7 +87,7 @@ namespace OpeNetLib
         /// </summary>
         /// <param name="data">The data to send.</param>
         /// <returns>A <see cref="Task"/> that completes when the data is sent.</returns>
-        internal async Task Send(byte[] data)
+        public async Task Send(byte[] data)
         {
             await Contact.Send(data, RecieverEndpoint);
         }

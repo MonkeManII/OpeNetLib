@@ -16,7 +16,7 @@ namespace OpeNetLibTests
         static void TestUInt()
         {
             uint value = 123u;
-            PacketConstructor constructor = new(0, 4);
+            PacketConstructor constructor = new(4);
             constructor.WriteUInt(value);
             PacketDestructor destructor = new(constructor.ResultBytes());
             uint newv = destructor.ReadUInt();
@@ -29,7 +29,7 @@ namespace OpeNetLibTests
         static void TestInt()
         {
             int value = 123;
-            PacketConstructor constructor = new(0, 4);
+            PacketConstructor constructor = new(4);
             constructor.WriteInt(value);
             PacketDestructor destructor = new(constructor.ResultBytes());
             int newv = destructor.ReadInt();
